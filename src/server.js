@@ -59,6 +59,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Ping (keep-alive uchun)
+app.get('/api/ping', (req, res) => {
+  res.json({ pong: true, uptime: process.uptime() });
+});
+
+
 // WebSocket setup
 setupWebSocket(io);
 
@@ -115,6 +121,25 @@ async function startServer() {
       console.log(`   GET    /api/dashboard/director`);
       console.log(`   GET    /api/leaves`);
       console.log(`\n`);
+
+      // ─── Keep-Alive (Render uxlab qolmasligi uchun) ───
+      const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
+      if (RENDER_URL) {
+        const https = require('https');
+        const http = require('http');
+        const pingUrl = `${RENDER_URL}/api/ping`;
+        const client = RENDER_URL.startsWith('https') ? https : http;
+
+        setInterval(() => {
+          client.get(pingUrl, (res) => {
+            console.log(`[KEEP-ALIVE] Ping → ${res.statusCode}`);
+          }).on('error', (err) => {
+            console.error('[KEEP-ALIVE] Ping xato:', err.message);
+          });
+        }, 3 * 60 * 1000); // Har 3 daqiqada
+
+        console.log(`🔄 Keep-Alive yoqildi: har 3 daqiqada ${pingUrl}`);
+      }
     });
   } catch (err) {
     console.error('❌ Server xatosi:', err);
@@ -123,3 +148,4 @@ async function startServer() {
 }
 
 startServer();
+
